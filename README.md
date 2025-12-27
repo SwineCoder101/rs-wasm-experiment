@@ -2,6 +2,8 @@
 
 A proof of concept project that demonstrates converting time series data arrays to FFT (Fast Fourier Transform) data arrays using Rust, compiled to WebAssembly.
 
+**Note: This project is designed for R&D and performance testing purposes.** The benchmarking features allow testing with high-resolution images and datasets of any size to evaluate WASM performance characteristics.
+
 ## Features
 
 - Fast FFT computation using the `rustfft` crate
@@ -24,30 +26,36 @@ The input data should be a text file where each data point is on a new line. For
 
 Empty lines are automatically skipped.
 
-## Limitations and Performance
+## Performance Benchmarking
 
-### Data Size Limits
+This project includes built-in performance benchmarking to test WASM FFT performance across different dataset sizes. This is designed for **R&D purposes** to evaluate:
 
-While there are no hard-coded limits, practical constraints apply:
+- WASM performance characteristics
+- Browser memory handling with large datasets
+- FFT computation speed scaling
+- Real-world performance on various hardware/browsers
 
-- **Recommended maximum**: Up to **1,000,000 data points** for optimal performance
-- **Text files**: Limited by browser memory (~10-100MB file size depending on browser)
-- **Images**: The FFT processes one value per pixel row (image height determines data points)
-  - Recommended: Images up to **10,000 pixels in height**
-  - Very large images (>20,000 pixels) may cause slow processing or browser memory issues
+### Benchmark Features
+
+- **Performance metrics**: Processing time, dataset size, and throughput
+- **Benchmark dashboard**: View performance results for your tests
+- **No size limits**: Test with any dataset size (limited only by available memory)
+- **Memory usage tracking**: Monitor browser memory behavior
 
 ### Performance Considerations
 
 - **FFT complexity**: O(n log n) - processing time increases with data size
 - **Memory usage**: Approximately 4 bytes per input value + memory for FFT operations
-- **Browser constraints**: WASM runs in browser memory, which is limited by available system RAM
-- **Large arrays**: Arrays larger than 1M elements may cause noticeable delays (>5-10 seconds)
+- **Browser constraints**: WASM runs in browser memory, limited by available system RAM
+- **Large datasets**: Performance will degrade with very large arrays; benchmarks help identify thresholds
 
-### Tips for Large Datasets
+### R&D Testing
 
-- **For images**: Consider resizing very large images before processing
-- **For text files**: Sample or downsample data if you have extremely large files
-- **Batch processing**: Process large datasets in smaller chunks if possible
+This tool is designed to test performance limits. You can:
+- Test high-resolution images (e.g., 4K, 8K+ images)
+- Process very large text datasets
+- Compare performance across different browsers/devices
+- Evaluate WASM performance characteristics for FFT operations
 
 ## Local Testing
 

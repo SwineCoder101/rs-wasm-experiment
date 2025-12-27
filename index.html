@@ -234,6 +234,11 @@
             grid-column: 1 / -1;
         }
 
+        #benchmarkCard {
+            background: linear-gradient(135deg, #f8f9ff 0%, #e8ebff 100%);
+            border: 2px solid #667eea;
+        }
+
         .result-card h3 {
             color: #667eea;
             margin-bottom: 15px;
@@ -353,7 +358,10 @@
 <body>
     <div class="container">
         <h1>🔬 FFT Analysis Tool</h1>
-        <p class="subtitle">Upload a text file or image to compute its FFT and visualize the frequency spectrum</p>
+        <p class="subtitle">
+            Upload a text file or image to compute its FFT and visualize the frequency spectrum.<br>
+            <strong style="color: #667eea;">R&D & Performance Testing:</strong> No size limits - benchmark high-resolution images and large datasets.
+        </p>
 
         <div class="tabs">
             <button class="tab active" onclick="switchTab('text')">📄 Text File</button>
@@ -410,6 +418,22 @@
         <div class="status" id="status"></div>
 
         <div class="results-section" id="resultsSection">
+            <div class="result-card full-width" id="benchmarkCard" style="display: none;">
+                <h3>🔬 Performance Benchmark</h3>
+                <div class="stats">
+                    <strong>Processing time:</strong> <span id="benchmarkTime">-</span><br>
+                    <strong>Data points:</strong> <span id="benchmarkDataPoints">-</span><br>
+                    <strong>Throughput:</strong> <span id="benchmarkThroughput">-</span> data points/second<br>
+                    <strong>Memory used:</strong> ~<span id="benchmarkMemory">-</span> MB (estimated)
+                </div>
+                <p style="margin-top: 10px; font-size: 0.9em; color: #666;">
+                    <em>Performance data for R&D and testing purposes. Results help evaluate WASM FFT performance characteristics.</em>
+                </p>
+                <div id="benchmarkHistory" style="margin-top: 15px; display: none;">
+                    <h4 style="color: #667eea; margin-bottom: 10px;">Benchmark History:</h4>
+                    <div id="benchmarkHistoryList" style="max-height: 200px; overflow-y: auto; font-size: 0.85em;"></div>
+                </div>
+            </div>
             <div class="results-grid">
                 <div class="result-card full-width" id="fftGraphCard">
                     <h3>FFT Magnitude Spectrum Graph</h3>
@@ -447,6 +471,7 @@
         let magnitudeResults = null;
         let fullFftResults = null;
         let currentMode = 'text';
+        let benchmarkResults = []; // Store benchmark history
 
         // Initialize WASM module
         const statusDiv = document.getElementById('status');
@@ -546,19 +571,14 @@
                         document.getElementById('imageDimensions').textContent = `${width} × ${height} pixels`;
                         document.getElementById('imageDataPoints').textContent = height.toLocaleString();
                         
-                        // Show warning for very large images
-                        if (height > 20000) {
+                        // Show info for large images (for R&D/benchmarking)
+                        if (height > 10000) {
                             showStatus(
-                                `⚠️ Large image detected (${height.toLocaleString()} pixels height). Processing may be slow.`, 
-                                'info'
-                            );
-                        } else if (height > 10000) {
-                            showStatus(
-                                `ℹ️ Image has ${height.toLocaleString()} pixel rows. Processing may take a moment.`, 
+                                `🔬 Large image detected (${height.toLocaleString()} pixels height) - ready for performance testing`, 
                                 'info'
                             );
                             setTimeout(() => {
-                                if (statusDiv.textContent.includes('pixel rows')) {
+                                if (statusDiv.textContent.includes('ready for performance testing')) {
                                     statusDiv.style.display = 'none';
                                 }
                             }, 3000);
@@ -633,19 +653,14 @@
                     document.getElementById('imageDimensions').textContent = `${width} × ${height} pixels`;
                     document.getElementById('imageDataPoints').textContent = height.toLocaleString();
                     
-                    // Show warning for very large images
-                    if (height > 20000) {
+                    // Show info for large images (for R&D/benchmarking)
+                    if (height > 10000) {
                         showStatus(
-                            `⚠️ Large image detected (${height.toLocaleString()} pixels height). Processing may be slow.`, 
-                            'info'
-                        );
-                    } else if (height > 10000) {
-                        showStatus(
-                            `ℹ️ Image has ${height.toLocaleString()} pixel rows. Processing may take a moment.`, 
+                            `🔬 Large image detected (${height.toLocaleString()} pixels height) - ready for performance testing`, 
                             'info'
                         );
                         setTimeout(() => {
-                            if (statusDiv.textContent.includes('pixel rows')) {
+                            if (statusDiv.textContent.includes('ready for performance testing')) {
                                 statusDiv.style.display = 'none';
                             }
                         }, 3000);
@@ -735,32 +750,36 @@
                     throw new Error('No valid data points found in file');
                 }
 
-                // Check data size and warn if too large
                 const dataPoints = timeSeries.length;
-                const MAX_RECOMMENDED = 1000000;
-                const MAX_WARNING = 2000000;
                 
-                if (dataPoints > MAX_WARNING) {
-                    const proceed = confirm(
-                        `Warning: Large dataset detected (${dataPoints.toLocaleString()} data points).\n\n` +
-                        `Processing may be slow or cause browser performance issues.\n\n` +
-                        `Recommended maximum: ${MAX_RECOMMENDED.toLocaleString()} data points.\n\n` +
-                        `Do you want to continue?`
-                    );
-                    if (!proceed) {
-                        processTextBtn.disabled = false;
-                        statusDiv.style.display = 'none';
-                        return;
-                    }
-                } else if (dataPoints > MAX_RECOMMENDED) {
+                // Show info for large datasets (for R&D/benchmarking purposes)
+                if (dataPoints > 1000000) {
                     showStatus(
-                        `⚠️ Processing large dataset (${dataPoints.toLocaleString()} points). This may take a while...`, 
+                        `🔬 Processing large dataset (${dataPoints.toLocaleString()} points) for performance testing...`, 
                         'info'
                     );
                 }
 
+                // Benchmark: Measure processing time
+                const startTime = performance.now();
                 const magnitude = compute_fft_magnitude_from_string(fileContent);
                 const fullFft = compute_fft(timeSeries);
+                const endTime = performance.now();
+                const processingTime = endTime - startTime;
+
+                // Store benchmark data
+                const benchmark = {
+                    timestamp: new Date().toISOString(),
+                    dataPoints: dataPoints,
+                    processingTimeMs: processingTime,
+                    throughput: dataPoints / (processingTime / 1000), // points per second
+                    estimatedMemoryMB: (dataPoints * 4 * 3) / (1024 * 1024), // rough estimate: input + fft + magnitude
+                    type: 'text_file'
+                };
+                benchmarkResults.push(benchmark);
+                
+                // Display benchmark
+                displayBenchmark(benchmark);
 
                 magnitudeResults = magnitude;
                 fullFftResults = fullFft;
@@ -775,7 +794,7 @@
                 
                 // Check for out-of-memory errors
                 if (errorMsg.includes('memory') || errorMsg.includes('Memory') || errorMsg.includes('alloc')) {
-                    errorMsg = 'File too large - ran out of memory. Try using a smaller file (recommended: <1M data points).';
+                    errorMsg = 'File too large - ran out of memory. This helps identify memory limits for R&D purposes.';
                 }
                 
                 showStatus('Error processing file: ' + errorMsg, 'error');
@@ -810,32 +829,41 @@
                     throw new Error('Failed to extract pixel data from image');
                 }
 
-                // Check data size and warn if too large
                 const dataPoints = timeSeries.length;
-                const MAX_RECOMMENDED = 1000000;
-                const MAX_WARNING = 2000000;
                 
-                if (dataPoints > MAX_WARNING) {
-                    const proceed = confirm(
-                        `Warning: Large dataset detected (${dataPoints.toLocaleString()} data points).\n\n` +
-                        `Processing may be slow or cause browser performance issues.\n\n` +
-                        `Recommended maximum: ${MAX_RECOMMENDED.toLocaleString()} data points.\n\n` +
-                        `Do you want to continue?`
-                    );
-                    if (!proceed) {
-                        processImageBtn.disabled = false;
-                        statusDiv.style.display = 'none';
-                        return;
-                    }
-                } else if (dataPoints > MAX_RECOMMENDED) {
+                // Show info for large datasets (for R&D/benchmarking purposes)
+                if (dataPoints > 1000000) {
                     showStatus(
-                        `⚠️ Processing large dataset (${dataPoints.toLocaleString()} points). This may take a while...`, 
+                        `🔬 Processing large image dataset (${dataPoints.toLocaleString()} points) for performance testing...`, 
                         'info'
                     );
                 }
 
+                // Benchmark: Measure processing time
+                const startTime = performance.now();
                 const magnitude = compute_fft_magnitude(timeSeries);
                 const fullFft = compute_fft(timeSeries);
+                const endTime = performance.now();
+                const processingTime = endTime - startTime;
+
+                // Get image dimensions for benchmark
+                const imageWidth = imageData.width;
+                const imageHeight = imageData.height;
+
+                // Store benchmark data
+                const benchmark = {
+                    timestamp: new Date().toISOString(),
+                    dataPoints: dataPoints,
+                    processingTimeMs: processingTime,
+                    throughput: dataPoints / (processingTime / 1000), // points per second
+                    estimatedMemoryMB: (dataPoints * 4 * 3) / (1024 * 1024), // rough estimate
+                    type: 'image',
+                    imageDimensions: `${imageWidth}×${imageHeight}`
+                };
+                benchmarkResults.push(benchmark);
+                
+                // Display benchmark
+                displayBenchmark(benchmark);
 
                 magnitudeResults = magnitude;
                 fullFftResults = fullFft;
@@ -850,7 +878,7 @@
                 
                 // Check for out-of-memory errors
                 if (errorMsg.includes('memory') || errorMsg.includes('Memory') || errorMsg.includes('alloc')) {
-                    errorMsg = 'Image too large - ran out of memory. Try using a smaller image (recommended: <10,000 pixels height).';
+                    errorMsg = 'Image too large - ran out of memory. This helps identify memory limits for R&D purposes.';
                 }
                 
                 showStatus('Error processing image: ' + errorMsg, 'error');
@@ -919,6 +947,61 @@
             }
             
             return pixelValues;
+        }
+
+        function displayBenchmark(benchmark) {
+            const benchmarkCard = document.getElementById('benchmarkCard');
+            benchmarkCard.style.display = 'block';
+            
+            document.getElementById('benchmarkTime').textContent = benchmark.processingTimeMs.toFixed(2) + ' ms';
+            document.getElementById('benchmarkDataPoints').textContent = benchmark.dataPoints.toLocaleString();
+            document.getElementById('benchmarkThroughput').textContent = benchmark.throughput.toLocaleString(undefined, {maximumFractionDigits: 0});
+            document.getElementById('benchmarkMemory').textContent = benchmark.estimatedMemoryMB.toFixed(2);
+            
+            // Save to localStorage for persistence
+            try {
+                const saved = JSON.parse(localStorage.getItem('fft_benchmarks') || '[]');
+                saved.push(benchmark);
+                // Keep only last 50 benchmarks
+                if (saved.length > 50) {
+                    saved.shift();
+                }
+                localStorage.setItem('fft_benchmarks', JSON.stringify(saved));
+                benchmarkResults = saved;
+                
+                // Update benchmark history display
+                updateBenchmarkHistory();
+            } catch (e) {
+                console.warn('Could not save benchmark to localStorage:', e);
+            }
+        }
+
+        function updateBenchmarkHistory() {
+            const historyDiv = document.getElementById('benchmarkHistory');
+            const historyList = document.getElementById('benchmarkHistoryList');
+            
+            if (benchmarkResults.length === 0) {
+                historyDiv.style.display = 'none';
+                return;
+            }
+            
+            historyDiv.style.display = 'block';
+            
+            // Show last 10 benchmarks in reverse chronological order
+            const recentBenchmarks = benchmarkResults.slice(-10).reverse();
+            
+            historyList.innerHTML = recentBenchmarks.map((b, idx) => {
+                const date = new Date(b.timestamp).toLocaleString();
+                const typeLabel = b.type === 'image' ? (b.imageDimensions ? `Image (${b.imageDimensions})` : 'Image') : 'Text File';
+                return `
+                    <div style="padding: 8px; margin-bottom: 5px; background: white; border-radius: 5px; border-left: 3px solid #667eea;">
+                        <strong>${typeLabel}</strong> - ${b.dataPoints.toLocaleString()} points | 
+                        ${b.processingTimeMs.toFixed(0)}ms | 
+                        ${b.throughput.toLocaleString(undefined, {maximumFractionDigits: 0})} pts/s<br>
+                        <span style="color: #999; font-size: 0.9em;">${date}</span>
+                    </div>
+                `;
+            }).join('');
         }
 
         function displayResults(magnitude, fullFft) {
@@ -1057,6 +1140,18 @@
                 }
             }, 2000);
         };
+
+        // Load saved benchmarks on page load
+        try {
+            const saved = JSON.parse(localStorage.getItem('fft_benchmarks') || '[]');
+            benchmarkResults = saved;
+            if (saved.length > 0) {
+                console.log(`Loaded ${saved.length} saved benchmarks for R&D analysis`);
+                updateBenchmarkHistory();
+            }
+        } catch (e) {
+            console.warn('Could not load benchmarks from localStorage:', e);
+        }
     </script>
 </body>
 </html>
