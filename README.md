@@ -47,6 +47,18 @@ For example, if you process `data.txt`, the output files will be:
 - `data_fft.txt`: Magnitude spectrum
 - `data_fft_full.txt`: Full FFT result (real/imag pairs)
 
+## Deployment to Vercel
+
+This project can be easily deployed to Vercel. See [DEPLOY.md](./DEPLOY.md) for detailed instructions.
+
+Quick deploy:
+```bash
+npm i -g vercel
+vercel
+```
+
+**Note:** The `pkg/` directory (containing WASM files) must be committed to your repository for Vercel deployment.
+
 ## Building for WebAssembly
 
 ### Prerequisites
