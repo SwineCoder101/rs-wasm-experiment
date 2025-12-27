@@ -1,1 +1,6 @@
 /target
+/pkg
+*_fft.txt
+*_fft_full.txt
+fft_output.txt
+fft_output_full.txt
