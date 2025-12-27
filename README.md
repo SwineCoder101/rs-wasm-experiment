@@ -24,6 +24,31 @@ The input data should be a text file where each data point is on a new line. For
 
 Empty lines are automatically skipped.
 
+## Limitations and Performance
+
+### Data Size Limits
+
+While there are no hard-coded limits, practical constraints apply:
+
+- **Recommended maximum**: Up to **1,000,000 data points** for optimal performance
+- **Text files**: Limited by browser memory (~10-100MB file size depending on browser)
+- **Images**: The FFT processes one value per pixel row (image height determines data points)
+  - Recommended: Images up to **10,000 pixels in height**
+  - Very large images (>20,000 pixels) may cause slow processing or browser memory issues
+
+### Performance Considerations
+
+- **FFT complexity**: O(n log n) - processing time increases with data size
+- **Memory usage**: Approximately 4 bytes per input value + memory for FFT operations
+- **Browser constraints**: WASM runs in browser memory, which is limited by available system RAM
+- **Large arrays**: Arrays larger than 1M elements may cause noticeable delays (>5-10 seconds)
+
+### Tips for Large Datasets
+
+- **For images**: Consider resizing very large images before processing
+- **For text files**: Sample or downsample data if you have extremely large files
+- **Batch processing**: Process large datasets in smaller chunks if possible
+
 ## Local Testing
 
 To test the FFT functionality locally with a file:

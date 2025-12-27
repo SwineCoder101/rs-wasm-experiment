@@ -388,6 +388,10 @@
             <div class="image-preview-container" id="imagePreviewContainer">
                 <h3 style="margin-bottom: 10px; color: #667eea;">Image Preview:</h3>
                 <img id="imagePreview" class="image-preview" alt="Preview">
+                <div class="stats" style="margin-top: 10px; font-size: 0.9em;">
+                    <strong>Image dimensions:</strong> <span id="imageDimensions">-</span><br>
+                    <strong>Data points:</strong> <span id="imageDataPoints">-</span> (one per pixel row)
+                </div>
             </div>
 
             <div class="url-input-section">
@@ -534,6 +538,32 @@
                 reader.onload = (e) => {
                     imagePreview.src = e.target.result;
                     imagePreviewContainer.classList.add('active');
+                    
+                    // Update image info when loaded
+                    imagePreview.onload = () => {
+                        const width = imagePreview.naturalWidth;
+                        const height = imagePreview.naturalHeight;
+                        document.getElementById('imageDimensions').textContent = `${width} × ${height} pixels`;
+                        document.getElementById('imageDataPoints').textContent = height.toLocaleString();
+                        
+                        // Show warning for very large images
+                        if (height > 20000) {
+                            showStatus(
+                                `⚠️ Large image detected (${height.toLocaleString()} pixels height). Processing may be slow.`, 
+                                'info'
+                            );
+                        } else if (height > 10000) {
+                            showStatus(
+                                `ℹ️ Image has ${height.toLocaleString()} pixel rows. Processing may take a moment.`, 
+                                'info'
+                            );
+                            setTimeout(() => {
+                                if (statusDiv.textContent.includes('pixel rows')) {
+                                    statusDiv.style.display = 'none';
+                                }
+                            }, 3000);
+                        }
+                    };
                 };
                 reader.readAsDataURL(file);
             } else {
@@ -596,10 +626,29 @@
                 imagePreview.src = objectUrl;
                 imagePreviewContainer.classList.add('active');
                 
-                // Clean up previous object URL when new image loads
+                // Update image info when loaded
                 imagePreview.onload = () => {
-                    if (imagePreview.src.startsWith('blob:')) {
-                        // Will be cleaned up when new image is loaded
+                    const width = imagePreview.naturalWidth;
+                    const height = imagePreview.naturalHeight;
+                    document.getElementById('imageDimensions').textContent = `${width} × ${height} pixels`;
+                    document.getElementById('imageDataPoints').textContent = height.toLocaleString();
+                    
+                    // Show warning for very large images
+                    if (height > 20000) {
+                        showStatus(
+                            `⚠️ Large image detected (${height.toLocaleString()} pixels height). Processing may be slow.`, 
+                            'info'
+                        );
+                    } else if (height > 10000) {
+                        showStatus(
+                            `ℹ️ Image has ${height.toLocaleString()} pixel rows. Processing may take a moment.`, 
+                            'info'
+                        );
+                        setTimeout(() => {
+                            if (statusDiv.textContent.includes('pixel rows')) {
+                                statusDiv.style.display = 'none';
+                            }
+                        }, 3000);
                     }
                 };
 
@@ -686,6 +735,30 @@
                     throw new Error('No valid data points found in file');
                 }
 
+                // Check data size and warn if too large
+                const dataPoints = timeSeries.length;
+                const MAX_RECOMMENDED = 1000000;
+                const MAX_WARNING = 2000000;
+                
+                if (dataPoints > MAX_WARNING) {
+                    const proceed = confirm(
+                        `Warning: Large dataset detected (${dataPoints.toLocaleString()} data points).\n\n` +
+                        `Processing may be slow or cause browser performance issues.\n\n` +
+                        `Recommended maximum: ${MAX_RECOMMENDED.toLocaleString()} data points.\n\n` +
+                        `Do you want to continue?`
+                    );
+                    if (!proceed) {
+                        processTextBtn.disabled = false;
+                        statusDiv.style.display = 'none';
+                        return;
+                    }
+                } else if (dataPoints > MAX_RECOMMENDED) {
+                    showStatus(
+                        `⚠️ Processing large dataset (${dataPoints.toLocaleString()} points). This may take a while...`, 
+                        'info'
+                    );
+                }
+
                 const magnitude = compute_fft_magnitude_from_string(fileContent);
                 const fullFft = compute_fft(timeSeries);
 
@@ -693,12 +766,19 @@
                 fullFftResults = fullFft;
 
                 displayResults(magnitude, fullFft);
-                showStatus(`✓ Successfully processed ${timeSeries.length} data points!`, 'success');
+                showStatus(`✓ Successfully processed ${dataPoints.toLocaleString()} data points!`, 'success');
                 processTextBtn.disabled = false;
 
             } catch (error) {
                 console.error('Error processing file:', error);
-                showStatus('Error processing file: ' + error.message, 'error');
+                let errorMsg = error.message;
+                
+                // Check for out-of-memory errors
+                if (errorMsg.includes('memory') || errorMsg.includes('Memory') || errorMsg.includes('alloc')) {
+                    errorMsg = 'File too large - ran out of memory. Try using a smaller file (recommended: <1M data points).';
+                }
+                
+                showStatus('Error processing file: ' + errorMsg, 'error');
                 processTextBtn.disabled = false;
             }
         };
@@ -730,6 +810,30 @@
                     throw new Error('Failed to extract pixel data from image');
                 }
 
+                // Check data size and warn if too large
+                const dataPoints = timeSeries.length;
+                const MAX_RECOMMENDED = 1000000;
+                const MAX_WARNING = 2000000;
+                
+                if (dataPoints > MAX_WARNING) {
+                    const proceed = confirm(
+                        `Warning: Large dataset detected (${dataPoints.toLocaleString()} data points).\n\n` +
+                        `Processing may be slow or cause browser performance issues.\n\n` +
+                        `Recommended maximum: ${MAX_RECOMMENDED.toLocaleString()} data points.\n\n` +
+                        `Do you want to continue?`
+                    );
+                    if (!proceed) {
+                        processImageBtn.disabled = false;
+                        statusDiv.style.display = 'none';
+                        return;
+                    }
+                } else if (dataPoints > MAX_RECOMMENDED) {
+                    showStatus(
+                        `⚠️ Processing large dataset (${dataPoints.toLocaleString()} points). This may take a while...`, 
+                        'info'
+                    );
+                }
+
                 const magnitude = compute_fft_magnitude(timeSeries);
                 const fullFft = compute_fft(timeSeries);
 
@@ -737,12 +841,19 @@
                 fullFftResults = fullFft;
 
                 displayResults(magnitude, fullFft);
-                showStatus(`✓ Successfully processed image (${timeSeries.length} pixels)!`, 'success');
+                showStatus(`✓ Successfully processed image (${dataPoints.toLocaleString()} data points)!`, 'success');
                 processImageBtn.disabled = false;
 
             } catch (error) {
                 console.error('Error processing image:', error);
-                showStatus('Error processing image: ' + error.message, 'error');
+                let errorMsg = error.message;
+                
+                // Check for out-of-memory errors
+                if (errorMsg.includes('memory') || errorMsg.includes('Memory') || errorMsg.includes('alloc')) {
+                    errorMsg = 'Image too large - ran out of memory. Try using a smaller image (recommended: <10,000 pixels height).';
+                }
+                
+                showStatus('Error processing image: ' + errorMsg, 'error');
                 processImageBtn.disabled = false;
             }
         };
